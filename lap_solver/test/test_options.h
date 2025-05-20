@@ -37,6 +37,9 @@ public:
 	std::vector<std::string> images;
 	std::vector<int> devices;
 	bool silent;
+	//  cheng modified
+	std::string custom_matrix_file;
+
 
 	int runs;
 public:
@@ -84,6 +87,10 @@ public:
 			if (!strcmp(argv[i], "-default"))
 			{
 				setDefault();
+			}
+			// cheng modify
+			else if (!strcmp(argv[i], "-custom_matrix")) {
+    			custom_matrix_file = argv[++i];
 			}
 			else if (!strcmp(argv[i], "-default_size"))
 			{

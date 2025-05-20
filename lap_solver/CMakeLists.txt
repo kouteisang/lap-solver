@@ -1,5 +1,5 @@
 # Check requirements
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.22)
 
 # Name the project you can choose any name you want here
 project(lap)
