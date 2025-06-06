@@ -1,5 +1,5 @@
 #ifdef _OPENMP
-#  define LAP_OPENMP
+#define LAP_OPENMP
 #endif
 #define LAP_QUIET
 //#define LAP_DISPLAY_EVALUATED
@@ -27,6 +27,18 @@
 #include "image.h"
 #include <iomanip>
 
+// 声明 solveTable（非 OpenMP）
+template <class SC, class TC, class CF, class TP>
+void solveTable(TP &start_time, int N1, int N2, CF &get_cost,
+                int *rowsol, bool epsilon);
+
+#ifdef LAP_OPENMP
+// 声明 solveTableOMP（OpenMP 版本，默认参数只能在这里写）
+template <class SC, class TC, class CF, class TP>
+void solveTableOMP(TP &start_time, int N1, int N2, CF &get_cost,
+                   int *rowsol, bool epsilon, bool sequential = false);
+#endif
+
 template <class C> void testRandom(long long min_tab, long long max_tab, int runs, bool omp, bool epsilon, std::string name_C);
 template <class C> void testSanity(long long min_tab, long long max_tab, int runs, bool omp, bool epsilon, std::string name_C);
 template <class C> void testSanityCached(long long min_cached, long long max_cached, long long max_memory, int runs, bool omp, bool epsilon, std::string name_C);
@@ -37,11 +49,77 @@ template <class C> void testRandomLowRankCached(long long min_cached, long long 
 template <class C> void testImages(std::vector<std::string> &images, long long max_memory, int runs, bool omp, bool epsilon, std::string name_C);
 template <class C> void testInteger(long long min_tab, long long max_tab, int runs, bool omp, bool epsilon, std::string name_C);
 
+template <typename C>
+std::vector<std::vector<C>> loadMatrixFromFile(const std::string &filename) {
+    std::ifstream file(filename);
+    std::vector<std::vector<C>> matrix;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::vector<C> row;
+        C value;
+        while (ss >> value) {
+            row.push_back(value);
+        }
+        matrix.push_back(row);
+    }
+    return matrix;
+}
+
+template <typename C>
+void testCustomMatrix(const std::string &filename, bool epsilon, bool use_omp) {
+    auto matrix = loadMatrixFromFile<C>(filename);
+    int N = static_cast<int>(matrix.size());
+
+    if (matrix.empty() || matrix[0].size() != N) {
+        std::cerr << "Error: input matrix must be square (N x N)" << std::endl;
+        return;
+    }
+
+    std::cout << "Running LAP on custom matrix: " << N << "x" << N;
+    if (use_omp) std::cout << " multithreaded";
+    if (epsilon) std::cout << " with epsilon scaling";
+    std::cout << std::endl;
+
+    C *mat = new C[N * N];
+    for (int i = 0; i < N; ++i)
+        for (int j = 0; j < N; ++j)
+            mat[i * N + j] = matrix[i][j];
+
+    auto get_cost = [=](int x, int y) -> C {
+        return mat[x * N + y];
+    };
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+    int *rowsol = new int[N];
+
+#ifdef LAP_OPENMP
+    if (use_omp)
+        solveTableOMP<C, C>(start_time, N, N, get_cost, rowsol, epsilon);
+    else
+#endif
+        solveTable<C, C>(start_time, N, N, get_cost, rowsol, epsilon);
+
+    delete[] mat;
+    delete[] rowsol;
+}
+
+
 int main(int argc, char* argv[])
 {
 	Options opt;
 	int r = opt.parseOptions(argc, argv);
 	if (r != 0) return r;
+
+		// Cheng add
+	if (!opt.custom_matrix_file.empty()) {
+		if (opt.use_double)
+			testCustomMatrix<double>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
+		else
+			testCustomMatrix<float>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
+		return 0;
+	}
+
 
 	if (opt.use_omp)
 	{
@@ -146,7 +224,7 @@ int main(int argc, char* argv[])
 
 #ifdef LAP_OPENMP
 template <class SC, class TC, class CF, class TP>
-void solveTableOMP(TP &start_time, int N1, int N2, CF &get_cost, int *rowsol, bool epsilon, bool sequential = false)
+void solveTableOMP(TP &start_time, int N1, int N2, CF &get_cost, int *rowsol, bool epsilon, bool sequential)
 {
 	lap::omp::SimpleCostFunction<TC, CF> costFunction(get_cost, sequential);
 	lap::omp::Worksharing ws(N2, 8);
