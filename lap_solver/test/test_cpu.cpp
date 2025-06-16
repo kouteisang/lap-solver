@@ -111,12 +111,19 @@ int main(int argc, char* argv[])
 	int r = opt.parseOptions(argc, argv);
 	if (r != 0) return r;
 
-		// Cheng add
 	if (!opt.custom_matrix_file.empty()) {
 		if (opt.use_double)
-			testCustomMatrix<double>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
-		else
-			testCustomMatrix<float>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
+			testCustomMatrix<double>(opt.custom_matrix_file, opt.use_epsilon, opt.use_omp);
+		else if (opt.use_float)
+			testCustomMatrix<float>(opt.custom_matrix_file, opt.use_epsilon, opt.use_omp);
+		else if (opt.use_int)
+			testCustomMatrix<int>(opt.custom_matrix_file, opt.use_epsilon, opt.use_omp);
+		else if (opt.use_long)
+			testCustomMatrix<long long>(opt.custom_matrix_file, opt.use_epsilon, opt.use_omp);
+		else {
+			std::cerr << "Error: must specify data type for custom matrix (-float, -int, etc.)" << std::endl;
+			return 1;
+		}
 		return 0;
 	}
 
