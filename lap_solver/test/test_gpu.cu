@@ -190,8 +190,11 @@ int main(int argc, char* argv[])
 	if (!opt.custom_matrix_file.empty()) {
 		if (opt.use_double)
 			testCustomMatrix<double>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
-		else
+		else if (opt.use_float)
 			testCustomMatrix<float>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
+		else if (opt.use_int)
+			testCustomMatrix<int>(opt.custom_matrix_file, opt.use_epsilon, !opt.use_omp);
+			
 		return 0;
 	}
 
